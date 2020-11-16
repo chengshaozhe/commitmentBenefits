@@ -10,20 +10,22 @@ import time
 
 from src.algorithms.mcts import MCTS, ScoreChild, establishSoftmaxActionDist, SelectChild, Expand, RollOut, backup, InitializeChildren
 import src.MDPChasing.envDiscreteGrid as env
-from src.MDPChasing.envDiscreteGrid import IsTerminal, TransiteForNoPhysics, Reset
+from src.MDPChasing.envDiscreteGrid import IsTerminal, Transition, Reset
 
 from src.MDPChasing.state import GetAgentPosFromState
 import src.MDPChasing.reward as reward
-from src.MDPChasing.policies import stationaryAgentPolicy
+from src.MDPChasing.policies import stationaryAgentPolicy, RandomPolicy
 from src.trajectory import SampleTrajectory
 from src.chooseFromDistribution import maxFromDistribution
+from src.visualization import *
 
 
-def main():
-    lowerBoundary, gridSize = [0, 15]
+def mctsPolicy():
+    lowerBound = 0
+    gridSize = 15
+    upperBound = [14, 14]
 
-    numSimulations = 50
-    maxRolloutSteps = 10
+    maxRunningSteps = 30
 
     actionSpace = [(-1, 0), (1, 0), (0, 1), (0, -1)]
     numActionSpace = len(actionSpace)
@@ -31,28 +33,24 @@ def main():
     sheepSpeedRatio = 1
     sheepActionSpace = list(map(tuple, np.array(actionSpace) * sheepSpeedRatio))
 
-    numOfAgent = 4
-    wolfId = 0
-    sheepIds = [1, 2, 3]
-    sheepOneId = 1
-    sheepTwoId = 2
-    sheepThreeId = 3
+    numOfAgent = 5  # 1 hunter, 1 stag with high value, 3 rabbits with low value
+    hunterId = [0]
+    targetIds = [1, 2, 3, 4]
+    stagId = [1]
+    rabbitId = [2, 3, 4]
 
     positionIndex = [0, 1]
 
-    getWolfPos = GetAgentPosFromState(wolfId, positionIndex)
-    getSheepPos = GetAgentPosFromState(sheepIds, positionIndex)
+    getHunterPos = GetAgentPosFromState(hunterId, positionIndex)
+    getTargetsPos = GetAgentPosFromState(targetIds, positionIndex)
 
-    stayWithinBoundary = env.StayWithinBoundary(gridSize, lowerBoundary)
-
-    isTerminal = env.IsTerminal(getWolfPos, getSheepPos)
-
+    stayWithinBoundary = env.StayWithinBoundary(upperBound, lowerBound)
+    isTerminal = env.IsTerminal(getHunterPos, getTargetsPos)
     transitionFunction = env.Transition(stayWithinBoundary)
-    reset = env.Reset(xBoundary, yBoundary, numOfAgent)
+    reset = env.Reset(upperBound, lowerBound, numOfAgent)
 
-    sheepOnePolicy = RandomPolicy(sheepActionSpace)
-    sheepTwoPolicy = stationaryAgentPolicy
-    sheepThreePolicy = stationaryAgentPolicy
+    stagPolicy = RandomPolicy(sheepActionSpace)
+    rabbitPolicies = [stationaryAgentPolicy] * len(rabbitId)
 
     cInit = 1
     cBase = 100
@@ -61,12 +59,11 @@ def main():
     getActionPrior = lambda state: {action: 1 / len(actionSpace) for action in actionSpace}
 
     def wolfTransit(state, action): return transitionFunction(
-        state, [action, chooseGreedyAction(sheepOnePolicy(state))])
+        state, [action, maxFromDistribution(stagPolicy(state))] + [maxFromDistribution(rabbitPolicy(state)) for rabbitPolicy in rabbitPolicies])
 
-    maxRunningSteps = 100
     stepPenalty = -1 / maxRunningSteps
     catchBonus = 1
-    rewardFunction = reward.RewardFunctionCompete(
+    rewardFunction = reward.RewardFunction(
         stepPenalty, catchBonus, isTerminal)
 
     initializeChildren = InitializeChildren(
@@ -76,30 +73,55 @@ def main():
     def rolloutPolicy(
         state): return actionSpace[np.random.choice(range(numActionSpace))]
     rolloutHeuristicWeight = 1
-    rolloutHeuristic = reward.HeuristicDistanceToTarget(
-        rolloutHeuristicWeight, getPredatorOnePos, getPreyPos)
+    rolloutHeuristic = reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getHunterPos, getTargetsPos)
+    # rolloutHeuristic = lambda state: 0
 
+    maxRolloutSteps = 15
     rollout = RollOut(rolloutPolicy, maxRolloutSteps, wolfTransit,
                       rewardFunction, isTerminal, rolloutHeuristic)
-
+    numSimulations = 200
     wolfPolicy = MCTS(numSimulations, selectChild, expand,
                       rollout, backup, establishSoftmaxActionDist)
 
     # All agents' policies
-    policy = lambda state: [wolfPolicy(state), sheepOnePolicy(state), sheepTwoPolicy(state), sheepThreePolicy(state)]
+    policy = lambda state: [wolfPolicy(state), stagPolicy(state)] + [rabbitPolicy(state) for rabbitPolicy in rabbitPolicies]
 
-    chooseAction = [maxFromDistribution] * 4
-    sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitionFunction, isTerminal, reset, chooseAction)
+
+# viz
+    screenWidth = 600
+    screenHeight = 600
+    fullScreen = False
+
+    initializeScreen = InitializeScreen(screenWidth, screenHeight, fullScreen)
+    screen = initializeScreen()
+    # pg.mouse.set_visible(False)
+
+    leaveEdgeSpace = 2
+    lineWidth = 1
+    backgroundColor = [205, 255, 204]
+    lineColor = [0, 0, 0]
+    targetColor = [255, 50, 50]
+    playerColor = [50, 50, 255]
+    targetRadius = 10
+    playerRadius = 10
+    textColorTuple = (255, 50, 50)
+
+    drawBackground = DrawBackground(screen, gridSize, leaveEdgeSpace, backgroundColor, lineColor, lineWidth, textColorTuple)
+    drawNewState = DrawNewState(screen, drawBackground, targetColor, playerColor, targetRadius, playerRadius)
+
+    chooseAction = [maxFromDistribution] * numOfAgent
+
+    renderOn = True
+    sampleTrajectory = SampleTrajectory(maxRunningSteps, transitionFunction, isTerminal, reset, chooseAction, renderOn, drawNewState)
 
     startTime = time.time()
-    trajectories = [sampleTrajectory(policy)]
-
+    numOfEpisodes = 10
+    trajectories = [sampleTrajectory(policy) for i in range(numOfEpisodes)]
     finshedTime = time.time() - startTime
 
     print('lenght:', len(trajectories[0]))
-
     print('time:', finshedTime)
 
 
 if __name__ == "__main__":
-    main()
+    mctsPolicy()

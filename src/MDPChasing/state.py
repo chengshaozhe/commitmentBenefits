@@ -2,6 +2,7 @@ import numpy as np
 import bisect
 import functools as ft
 
+
 class GetAgentPosFromState:
     def __init__(self, agentId, posIndex):
         self.agentId = agentId
@@ -9,9 +10,11 @@ class GetAgentPosFromState:
 
     def __call__(self, state):
         state = np.asarray(state)
+        # agentPos = state[self.agentId][self.posIndex]
         agentStates = state[self.agentId]
         agentPos = np.asarray([state[self.posIndex] for state in agentStates])
         return agentPos
+
 
 class GetStateForPolicyGivenIntention:
     def __init__(self, agentSelfId):

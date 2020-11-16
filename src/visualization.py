@@ -41,7 +41,7 @@ class DrawBackground():
                          [np.int((i + self.leaveEdgeSpace) * self.widthLineStepSpace), np.int((self.gridSize + self.leaveEdgeSpace) * self.heightLineStepSpace)], self.lineWidth)
             pg.draw.line(self.screen, self.lineColor, [np.int(self.leaveEdgeSpace * self.widthLineStepSpace), np.int((i + self.leaveEdgeSpace) * self.heightLineStepSpace)],
                          [np.int((self.gridSize + self.leaveEdgeSpace) * self.widthLineStepSpace), np.int((i + self.leaveEdgeSpace) * self.heightLineStepSpace)], self.lineWidth)
-        return
+        return self.screen
 
 
 class DrawNewState():
@@ -56,17 +56,18 @@ class DrawNewState():
         self.widthLineStepSpace = drawBackground.widthLineStepSpace
         self.heightLineStepSpace = drawBackground.heightLineStepSpace
 
-    def __call__(self, targetPositionA, targetPositionB, playerPosition, obstacles):
+    def __call__(self, playerPosition, targetPositions, obstacles):
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
         self.drawBackground()
-        pg.draw.rect(self.screen, self.targetColor, [np.int((targetPositionA[0] + self.leaveEdgeSpace + 0.2) * self.widthLineStepSpace),
-                                                     np.int((targetPositionA[1] + self.leaveEdgeSpace + 0.2) * self.heightLineStepSpace), self.targetRadius * 2, self.targetRadius * 2])
-        pg.draw.rect(self.screen, self.targetColor, [np.int((targetPositionB[0] + self.leaveEdgeSpace + 0.2) * self.widthLineStepSpace),
-                                                     np.int((targetPositionB[1] + self.leaveEdgeSpace + 0.2) * self.heightLineStepSpace), self.targetRadius * 2, self.targetRadius * 2])
-        pg.draw.circle(self.screen, self.playerColor, [np.int((playerPosition[0] + self.leaveEdgeSpace + 0.5) * self.widthLineStepSpace),
-                                                       np.int((playerPosition[1] + self.leaveEdgeSpace + 0.5) * self.heightLineStepSpace)], self.playerRadius)
+        pg.draw.circle(self.screen, self.playerColor, [np.int((playerPosition[0] + self.leaveEdgeSpace + 0.5) * self.widthLineStepSpace), np.int((playerPosition[1] + self.leaveEdgeSpace + 0.5) * self.heightLineStepSpace)], self.playerRadius)
 
-        [pg.draw.rect(self.screen, [0, 0, 0], [np.int((obstacle[0] + self.leaveEdgeSpace) * self.widthLineStepSpace),
-                                               np.int((obstacle[1] + self.leaveEdgeSpace) * self.heightLineStepSpace), self.widthLineStepSpace, self.widthLineStepSpace]) for obstacle in obstacles]
+        for targerPosition in targetPositions:
+            pg.draw.rect(self.screen, self.targetColor, [np.int((targerPosition[0] + self.leaveEdgeSpace + 0.2) * self.widthLineStepSpace), np.int((targerPosition[1] + self.leaveEdgeSpace + 0.2) * self.heightLineStepSpace), self.targetRadius * 2, self.targetRadius * 2])
+
+        [pg.draw.rect(self.screen, [0, 0, 0], [np.int((obstacle[0] + self.leaveEdgeSpace) * self.widthLineStepSpace), np.int((obstacle[1] + self.leaveEdgeSpace) * self.heightLineStepSpace), self.widthLineStepSpace, self.widthLineStepSpace]) for obstacle in obstacles]
+
         pg.display.flip()
         return self.screen
 
@@ -115,30 +116,31 @@ class DrawText():
 
 
 if __name__ == "__main__":
-    pg.init()
-    screenWidth = 720
-    screenHeight = 720
-    screen = pg.display.set_mode((screenWidth, screenHeight))
-    gridSize = 20
+    gridSize = [15, 15]
+    screenWidth = 600
+    screenHeight = 600
+    fullScreen = False
+
+    initializeScreen = InitializeScreen(screenWidth, screenHeight, fullScreen)
+    screen = initializeScreen()
+    # pg.mouse.set_visible(False)
+
     leaveEdgeSpace = 2
-    lineWidth = 2
-    backgroundColor = [188, 188, 0]
-    lineColor = [255, 255, 255]
+    lineWidth = 1
+    backgroundColor = [205, 255, 204]
+    lineColor = [0, 0, 0]
     targetColor = [255, 50, 50]
     playerColor = [50, 50, 255]
     targetRadius = 10
     playerRadius = 10
-    targetPositionA = [5, 5]
-    targetPositionB = [15, 5]
-    playerPosition = [10, 15]
-    picturePath = os.path.abspath(os.path.join(os.getcwd(), os.pardir)) + '/Pictures/'
-    restImage = pg.image.load(picturePath + 'rest.png')
-    currentTime = 138456
-    currentScore = 5
     textColorTuple = (255, 50, 50)
-    drawBackground = DrawBackground(screen, gridSize, leaveEdgeSpace, backgroundColor, lineColor, lineWidth, textColorTuple)
+
+    drawBackground = DrawBackground(screen, gridSize[0], leaveEdgeSpace, backgroundColor, lineColor, lineWidth, textColorTuple)
     drawNewState = DrawNewState(screen, drawBackground, targetColor, playerColor, targetRadius, playerRadius)
-    drawImage = DrawImage(screen)
-    drawBackground(currentTime, currentScore)
-    pg.time.wait(5000)
-    pg.quit()
+    playerPosition = [10, 10]
+    targetPositions = [(1, 2), (3, 4), (5, 6)]
+    obstacles = []
+
+    for i in range(10):
+        drawNewState(playerPosition, targetPositions, obstacles)
+    pg.time.wait(500)

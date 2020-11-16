@@ -1,8 +1,6 @@
 import numpy as np
 from random import randint
 
-c
-
 
 class Reset:
     def __init__(self, gridSize, lowerBound, agentCount):
@@ -50,9 +48,10 @@ class IsTerminal:
 
     def __call__(self, state):
         predatorPosition = self.locatePredator(state)
-        preyPosition = self.locatePrey(state)
+        preyPositions = self.locatePrey(state)
 
-        if np.all(np.array(predatorPosition) == np.array(preyPosition)):
+        isAnyTerminal = [np.all(np.array(predatorPosition) == np.array(preyPosition)) for preyPosition in preyPositions]
+        if np.any(isAnyTerminal):
             return True
         else:
             return False

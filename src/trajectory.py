@@ -3,12 +3,14 @@ import random
 
 
 class SampleTrajectory:
-    def __init__(self, maxRunningSteps, transit, isTerminal, resetState, chooseAction, resetPolicy=None):
+    def __init__(self, maxRunningSteps, transit, isTerminal, resetState, chooseAction, renderOn, viz, resetPolicy=None):
         self.maxRunningSteps = maxRunningSteps
         self.transit = transit
         self.isTerminal = isTerminal
         self.resetState = resetState
         self.chooseAction = chooseAction
+        self.renderOn = renderOn
+        self.viz = viz
         self.resetPolicy = resetPolicy
 
     def __call__(self, policy):
@@ -22,6 +24,14 @@ class SampleTrajectory:
             if self.isTerminal(state):
                 trajectory.append((state, None, None))
                 break
+
+            # need to clean
+            if self.renderOn:
+                playerPosition = state[0]
+                targetPositions = state[1:]
+                obstacles = []
+                self.viz(playerPosition, targetPositions, obstacles)
+
             actionDists = policy(state)
             action = [choose(actionDist) for choose, actionDist in zip(self.chooseAction, actionDists)]
             trajectory.append((state, action, actionDists))
