@@ -7,25 +7,41 @@ import random
 import json
 from collections import OrderedDict
 import time
-
-from src.algorithms.mcts import MCTS, ScoreChild, establishSoftmaxActionDist, SelectChild, Expand, RollOut, backup, InitializeChildren
 import src.MDPChasing.envDiscreteGrid as env
 from src.MDPChasing.envDiscreteGrid import IsTerminal, Transition, Reset
-
+from src.MDPChasing.reward import RewardFunctionCompete, RewardFunction
 from src.MDPChasing.state import GetAgentPosFromState
-import src.MDPChasing.reward as reward
+
 from src.MDPChasing.policies import stationaryAgentPolicy, RandomPolicy
-from src.trajectory import SampleTrajectory
+from src.algorithms.qLearning import GetAction, UpdateQTable, initQtable, argMax
 from src.chooseFromDistribution import maxFromDistribution
 from src.visualization import *
+from src.trajectory import SampleTrajectory
+
+
+def calculateSoftmaxProbability(acionValues, beta):
+    newProbabilityList = list(np.divide(np.exp(np.multiply(beta, acionValues)), np.sum(np.exp(np.multiply(beta, acionValues)))))
+
+    return newProbabilityList
+
+
+class SoftmaxPolicy:
+    def __init__(self, softmaxBeta, QDict, actionSpace):
+        self.QDict = QDict
+        self.softmaxBeta = softmaxBeta
+        self.actionSpace = actionSpace
+
+    def __call__(self, state):
+        actionValues = self.QDict[str(state)]
+        softmaxProbabilityList = calculateSoftmaxProbability(actionValues, self.softmaxBeta)
+        softMaxActionDict = dict(zip(self.actionSpace, softmaxProbabilityList))
+        return softMaxActionDict
 
 
 def mctsPolicy():
     lowerBound = 0
     gridSize = 10
     upperBound = [gridSize - 1, gridSize - 1]
-
-    maxRunningSteps = 50
 
     actionSpace = [(-1, 0), (1, 0), (0, 1), (0, -1)]
     numActionSpace = len(actionSpace)
@@ -49,41 +65,45 @@ def mctsPolicy():
     transitionFunction = env.Transition(stayWithinBoundary)
     reset = env.Reset(upperBound, lowerBound, numOfAgent)
 
-    # stagPolicy = RandomPolicy(sheepActionSpace)
+    stagPolicy = RandomPolicy(sheepActionSpace)
     stagPolicy = stationaryAgentPolicy
-    rabbitPolicies = [stationaryAgentPolicy] * len(rabbitId)
 
-    cInit = 1
-    cBase = 100
-    calculateScore = ScoreChild(cInit, cBase)
-    selectChild = SelectChild(calculateScore)
-    getActionPrior = lambda state: {action: 1 / len(actionSpace) for action in actionSpace}
+    rabbitPolicies = [stationaryAgentPolicy] * len(rabbitId)
 
     def wolfTransit(state, action): return transitionFunction(
         state, [action, maxFromDistribution(stagPolicy(state))] + [maxFromDistribution(rabbitPolicy(state)) for rabbitPolicy in rabbitPolicies])
 
+    maxRunningSteps = 100
     stepPenalty = -1 / maxRunningSteps
     catchBonus = 1
-    rewardFunction = reward.RewardFunction(
+    rewardFunction = RewardFunction(
         stepPenalty, catchBonus, isTerminal)
 
-    initializeChildren = InitializeChildren(
-        actionSpace, wolfTransit, getActionPrior)
-    expand = Expand(isTerminal, initializeChildren)
+# q-learing
+    qTable = initQtable(actionSpace)
+    discountFactor = 0.9
+    learningRate = 0.01
+    updateQTable = UpdateQTable(discountFactor, learningRate)
+    epsilon = 0.1
+    getAction = GetAction(epsilon, actionSpace, argMax)
 
-    def rolloutPolicy(
-        state): return actionSpace[np.random.choice(range(numActionSpace))]
-    rolloutHeuristicWeight = 1
-    rolloutHeuristic = reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getHunterPos, getTargetsPos)
-    # rolloutHeuristic = lambda state: 0
+    startTime = time.time()
+    for episode in range(1000):
+        state = reset()
+        for step in range(maxRunningSteps):
+            wolfactionIndex = getAction(qTable, str(state))
+            wolfaction = actionSpace[wolfactionIndex]
+            nextState = wolfTransit(state, wolfaction)
+            reward = rewardFunction(nextState, wolfaction)
+            done = isTerminal(nextState)
 
-    maxRolloutSteps = 20
-    rollout = RollOut(rolloutPolicy, maxRolloutSteps, wolfTransit,
-                      rewardFunction, isTerminal, rolloutHeuristic)
-    numSimulations = 300
-    wolfPolicy = MCTS(numSimulations, selectChild, expand,
-                      rollout, backup, establishSoftmaxActionDist)
-
+            qTable = updateQTable(qTable, str(state), wolfactionIndex, reward, str(nextState))
+            state = nextState
+            if done:
+                break
+    QDict = qTable
+    softmaxBeta = 5
+    wolfPolicy = SoftmaxPolicy(softmaxBeta, QDict, actionSpace)
     # All agents' policies
     policy = lambda state: [wolfPolicy(state), stagPolicy(state)] + [rabbitPolicy(state) for rabbitPolicy in rabbitPolicies]
 
@@ -116,7 +136,7 @@ def mctsPolicy():
     sampleTrajectory = SampleTrajectory(maxRunningSteps, transitionFunction, isTerminal, reset, chooseAction, renderOn, drawNewState)
 
     startTime = time.time()
-    numOfEpisodes = 10
+    numOfEpisodes = 30
     trajectories = [sampleTrajectory(policy) for i in range(numOfEpisodes)]
     finshedTime = time.time() - startTime
 
