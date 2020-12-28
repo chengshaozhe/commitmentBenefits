@@ -76,8 +76,8 @@ def mctsPolicy():
     maxRunningSteps = 100
     stepPenalty = -1 / maxRunningSteps
     catchBonus = 1
-    rewardFunction = RewardFunction(
-        stepPenalty, catchBonus, isTerminal)
+    highRewardRatio = 1
+    rewardFunction = RewardFunction(highRewardRatio, stepPenalty, catchBonus, isTerminal)
 
 # q-learing
     qTable = initQtable(actionSpace)

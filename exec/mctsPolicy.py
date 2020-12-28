@@ -64,23 +64,21 @@ def mctsPolicy():
 
     stepPenalty = -1 / maxRunningSteps
     catchBonus = 1
-    rewardFunction = reward.RewardFunction(
-        stepPenalty, catchBonus, isTerminal)
+    highRewardRatio = 10
+    rewardFunction = reward.RewardFunction(highRewardRatio, stepPenalty, catchBonus, isTerminal)
 
-    initializeChildren = InitializeChildren(
-        actionSpace, wolfTransit, getActionPrior)
+    initializeChildren = InitializeChildren(actionSpace, wolfTransit, getActionPrior)
     expand = Expand(isTerminal, initializeChildren)
 
-    def rolloutPolicy(
-        state): return actionSpace[np.random.choice(range(numActionSpace))]
-    rolloutHeuristicWeight = 1
+    def rolloutPolicy(state): return actionSpace[np.random.choice(range(numActionSpace))]
+    rolloutHeuristicWeight = 0
     rolloutHeuristic = reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getHunterPos, getTargetsPos)
     # rolloutHeuristic = lambda state: 0
 
     maxRolloutSteps = 20
     rollout = RollOut(rolloutPolicy, maxRolloutSteps, wolfTransit,
                       rewardFunction, isTerminal, rolloutHeuristic)
-    numSimulations = 300
+    numSimulations = 200
     wolfPolicy = MCTS(numSimulations, selectChild, expand,
                       rollout, backup, establishSoftmaxActionDist)
 

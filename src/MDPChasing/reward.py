@@ -2,7 +2,8 @@ import numpy as np
 
 
 class RewardFunction():
-    def __init__(self, aliveBonus, deathPenalty, isTerminal):
+    def __init__(self, highRewardRatio, aliveBonus, deathPenalty, isTerminal):
+        self.highRewardRatio = highRewardRatio
         self.aliveBonus = aliveBonus
         self.deathPenalty = deathPenalty
         self.isTerminal = isTerminal
@@ -10,9 +11,9 @@ class RewardFunction():
     def __call__(self, state, action):
         reward = self.aliveBonus
         if self.isTerminal(state):
-            ## need to clean
+            # need to clean
             if state[0] == state[1]:
-                reward += 30 * self.deathPenalty
+                reward += self.highRewardRatio * self.deathPenalty
             else:
                 reward += self.deathPenalty
 
