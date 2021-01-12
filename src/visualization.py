@@ -67,8 +67,12 @@ class DrawNewState():
         self.drawBackground()
         pg.draw.circle(self.screen, self.playerColor, [np.int((playerPosition[0] + self.leaveEdgeSpace + 0.5) * self.widthLineStepSpace), np.int((playerPosition[1] + self.leaveEdgeSpace + 0.5) * self.heightLineStepSpace)], self.playerRadius)
 
-        for targerPosition in targetPositions:
-            pg.draw.rect(self.screen, self.targetColor, [np.int((targerPosition[0] + self.leaveEdgeSpace + 0.2) * self.widthLineStepSpace), np.int((targerPosition[1] + self.leaveEdgeSpace + 0.2) * self.heightLineStepSpace), self.targetRadius * 2, self.targetRadius * 2])
+
+        for index, targerPosition in enumerate(targetPositions):
+            if index==0:
+                pg.draw.rect(self.screen, [255, 0, 0], [np.int((targerPosition[0] + self.leaveEdgeSpace + 0.2) * self.widthLineStepSpace), np.int((targerPosition[1] + self.leaveEdgeSpace + 0.2) * self.heightLineStepSpace), self.targetRadius * 2, self.targetRadius * 2])
+            else:
+                pg.draw.rect(self.screen, self.targetColor, [np.int((targerPosition[0] + self.leaveEdgeSpace + 0.2) * self.widthLineStepSpace), np.int((targerPosition[1] + self.leaveEdgeSpace + 0.2) * self.heightLineStepSpace), self.targetRadius * 2, self.targetRadius * 2])
 
         [pg.draw.rect(self.screen, [0, 0, 0], [np.int((obstacle[0] + self.leaveEdgeSpace) * self.widthLineStepSpace), np.int((obstacle[1] + self.leaveEdgeSpace) * self.heightLineStepSpace), self.widthLineStepSpace, self.widthLineStepSpace]) for obstacle in obstacles]
 

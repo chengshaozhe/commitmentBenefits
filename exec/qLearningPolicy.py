@@ -38,7 +38,7 @@ class SoftmaxPolicy:
         return softMaxActionDict
 
 
-def mctsPolicy():
+def qLearningPolicy():
     lowerBound = 0
     gridSize = 10
     upperBound = [gridSize - 1, gridSize - 1]
@@ -107,8 +107,11 @@ def mctsPolicy():
     # All agents' policies
     policy = lambda state: [wolfPolicy(state), stagPolicy(state)] + [rabbitPolicy(state) for rabbitPolicy in rabbitPolicies]
 
+    return policy
 
-# viz
+
+if __name__ == "__main__":
+    policy = qLearningPolicy()
     screenWidth = 600
     screenHeight = 600
     fullScreen = False
@@ -143,6 +146,3 @@ def mctsPolicy():
     print('lenght:', len(trajectories[0]))
     print('time:', finshedTime)
 
-
-if __name__ == "__main__":
-    mctsPolicy()

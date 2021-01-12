@@ -20,6 +20,14 @@ from src.chooseFromDistribution import maxFromDistribution
 from src.visualization import *
 
 
+def singleMctsPolicy():
+
+
+
+
+    return policy
+
+
 def mctsPolicy():
     lowerBound = 0
     gridSize = 10
@@ -78,15 +86,16 @@ def mctsPolicy():
     maxRolloutSteps = 20
     rollout = RollOut(rolloutPolicy, maxRolloutSteps, wolfTransit,
                       rewardFunction, isTerminal, rolloutHeuristic)
-    numSimulations = 200
+    numSimulations = 600
     wolfPolicy = MCTS(numSimulations, selectChild, expand,
                       rollout, backup, establishSoftmaxActionDist)
 
     # All agents' policies
     policy = lambda state: [wolfPolicy(state), stagPolicy(state)] + [rabbitPolicy(state) for rabbitPolicy in rabbitPolicies]
+    numOfAgent = 5
+    gridSize = 15
+    maxRunningSteps = 50
 
-
-# viz
     screenWidth = 600
     screenHeight = 600
     fullScreen = False
@@ -99,7 +108,8 @@ def mctsPolicy():
     lineWidth = 1
     backgroundColor = [205, 255, 204]
     lineColor = [0, 0, 0]
-    targetColor = [255, 50, 50]
+    distractorColor = [255,255,0]
+    targetColor = [221,160,221]
     playerColor = [50, 50, 255]
     targetRadius = 10
     playerRadius = 10
@@ -124,3 +134,4 @@ def mctsPolicy():
 
 if __name__ == "__main__":
     mctsPolicy()
+

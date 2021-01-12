@@ -31,6 +31,27 @@ class StayWithinBoundary:
         return nextX, nextY
 
 
+class IsHitObstacles:
+    def __init__(self, obstacles):
+        self.obstacles = obstacles
+
+    def __call__(self, nextIntendedState):
+        if nextIntendedState in self.obstacles:
+            return True
+        else:
+            return False
+
+
+class TransitionWithObstacles:
+    def __init__(self, stayWithinBoundary):
+        self.stayWithinBoundary = stayWithinBoundary
+
+    def __call__(self, actionList, state):
+        agentsIntendedState = np.array(state) + np.array(actionList)
+        agentsNextState = [self.stayWithinBoundary(intendedState) for intendedState in agentsIntendedState]
+        return agentsNextState
+
+
 class Transition:
     def __init__(self, stayWithinBoundary):
         self.stayWithinBoundary = stayWithinBoundary
