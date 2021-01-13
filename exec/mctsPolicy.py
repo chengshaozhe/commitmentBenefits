@@ -20,12 +20,6 @@ from src.chooseFromDistribution import maxFromDistribution
 from src.visualization import *
 
 
-def singleMctsPolicy():
-
-
-
-
-    return policy
 
 
 def mctsPolicy():

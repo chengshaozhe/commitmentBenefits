@@ -91,7 +91,7 @@ def main():
     randomObsNum = 18
     randomSampleMaze = RandomSampleMaze(x_range, y_range, randomObsNum, [s_start], [highvalueGoal], lowvalueGoal)
 
-    maze = namedtuple('maze', 'initAgent highValueGoalPos highValueSteps fixedObstacles ')
+    maze = namedtuple('maze', 'initAgent highValueGoalPos lowValueGoalsPos highValueSteps fixedObstacles ')
 
     highValueSteps = 20
     lowValueSteps = 13
@@ -140,7 +140,7 @@ def main():
                 minDistractDistance.append({goal: minDistance})
 
             # currentMaze = maze(initAgent = s_start, highValueGoalPos = highvalueGoal, highValueSteps = len(path), fixedObstacles = proposalMaze)
-            currentMaze = {'initAgent': s_start, 'highValueGoalPos': highvalueGoal, 'highValueSteps': len(path), 'distractDistance': minDistractDistance, 'fixedObstacles': proposalMaze}
+            currentMaze = {'initAgent': s_start, 'highValueGoalPos': highvalueGoal, 'lowValueGoalsPos': lowvalueGoal, 'highValueSteps': len(path), 'distractDistance': minDistractDistance, 'fixedObstacles': proposalMaze}
             # print(currentMaze,i)
             i = i + 1
             print(currentMaze, i)
