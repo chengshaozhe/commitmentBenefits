@@ -1,6 +1,6 @@
 import numpy as np
 from random import randint
-
+from random import  sample
 
 class Reset:
     def __init__(self, gridSize, lowerBound, agentCount):
@@ -10,24 +10,34 @@ class Reset:
 
     def __call__(self):
         startState = [(randint(self.lowerBound, self.gridX), randint(self.lowerBound, self.gridY)) for _ in range(self.agentCount)]
+
+        return startState
+class FixReset:
+    def __init__(self, agentState, stagState, rabbitState):
+        self.agentState = agentState
+        self.stagState = stagState
+        self.rabbitState = rabbitState
+
+    def __call__(self):
+        startState = [self.agentState] + [self.stagState] + [list(state) for state in  self.rabbitState]
         return startState
 
 class ResetMaze:
-    def __init__(self, gridSize, lowerBound, agentCount,MazeList):
+    def __init__(self, gridSize, lowerBound,MazeList):
         self.gridX, self.gridY = gridSize
         self.lowerBound = lowerBound
-        self.agentCount = agentCount
         self.MazeList = MazeList
 
     def __call__(self):
-        maze = np.random.sample(self.MazeList)
-        obstacle = maze['fixedObstacles']
-        agentState = list(maze['s_start'])
+        # maze = np.random.sample(self.MazeList)
+        maze = sample(self.MazeList, 1)[0]
+        agentState = list(maze['initAgent'])
         stagState = list(maze['highValueGoalPos'])
         rabbitState = list(maze['lowValueGoalsPos'])
         startState = [agentState]+[stagState]+[list(state) for state in rabbitState]
-
-        return startState, maze
+        obs = maze['fixedObstacles']
+        obs=[]
+        return [startState, obs]
 
 class StayWithinBoundary:
     def __init__(self, gridSize, lowerBoundary):
@@ -52,6 +62,7 @@ class StayWithinBoundaryMaze:
         self.lowerBoundary = lowerBoundary
 
     def __call__(self, state,action,obstacleList):
+
         nextIntendedState = np.array(state)+np.array(action)
         nextX, nextY = nextIntendedState
         if nextX < self.lowerBoundary:
@@ -62,7 +73,8 @@ class StayWithinBoundaryMaze:
             nextY = self.lowerBoundary
         if nextY > self.gridY:
             nextY = self.gridY
-        if [nextX, nextY] in obstacleList:
+
+        if (nextX, nextY) in obstacleList:
             nextX, nextY = np.array(state)
         return nextX, nextY
 
@@ -81,10 +93,11 @@ class TransitionWithObstacles:
     def __init__(self, StayWithinBoundaryMaze):
         self.StayWithinBoundaryMaze = StayWithinBoundaryMaze
 
-    def __call__(self, actionList, stateList, obstacleList):
-
-        agentsNextState = [self.StayWithinBoundaryMaze(state, action, obstacleList) for state,action in zip(stateList,actionList)]
-        return agentsNextState
+    def __call__(self, stateList,actionList):
+        obstacleList = stateList[1]
+        agentStateList = stateList[0]
+        agentsNextState = [self.StayWithinBoundaryMaze(state, action, obstacleList) for state,action in zip(agentStateList,actionList)]
+        return [agentsNextState,obstacleList]
 
 
 class Transition:
@@ -96,7 +109,21 @@ class Transition:
         agentsNextState = [self.stayWithinBoundary(intendedState) for intendedState in agentsIntendedState]
         return agentsNextState
 
+class IsTerminalWithKillZone():
+    def __init__(self, locatePredator, locatePrey, minDistance):
+        self.locatePredator = locatePredator
+        self.locatePrey = locatePrey
+        self.minDistance = minDistance
 
+    def __call__(self, state):
+        terminal = False
+        predatorPosition = self.locatePredator(state)
+        preyPositions = self.locatePrey(state)
+
+        L1Normdistances = [np.linalg.norm((np.array(preyPosition) - np.array(predatorPosition)), ord=1) for preyPosition in preyPositions ]
+        if np.any(np.array(L1Normdistances) <= self.minDistance):
+            terminal = True
+        return terminal
 class IsTerminal:
     def __init__(self, locatePredator, locatePrey):
         self.locatePredator = locatePredator

@@ -93,7 +93,7 @@ def main():
 
     maze = namedtuple('maze', 'initAgent highValueGoalPos lowValueGoalsPos highValueSteps fixedObstacles ')
 
-    highValueSteps = 20
+    highValueSteps = 19
     lowValueSteps = 13
     numberOfMaze = 5
 

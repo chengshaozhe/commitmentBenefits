@@ -8,18 +8,29 @@ import json
 from collections import OrderedDict
 import time
 
-from src.algorithms.mcts import MCTS, ScoreChild, establishSoftmaxActionDist, SelectChild, Expand, RollOut, backup, InitializeChildren,establishPlainActionDist
+from src.algorithms.mcts import MCTS, ScoreChild, establishSoftmaxActionDist,establishPlainActionDist, SelectChild, Expand, RollOut, backup, InitializeChildren
 import src.MDPChasing.envDiscreteGrid as env
 from src.MDPChasing.envDiscreteGrid import IsTerminal, Transition, Reset
 
 from src.MDPChasing.state import GetAgentPosFromState
 import src.MDPChasing.reward as reward
 from src.MDPChasing.policies import stationaryAgentPolicy, RandomPolicy
-from src.trajectory import SampleTrajectory
+from src.trajectory import SampleTrajectoryMaze
 from src.chooseFromDistribution import maxFromDistribution
 from src.visualization import *
 
 
+def loadFromPickle(path):
+    pickleIn = open(path, 'rb')
+    object = pickle.load(pickleIn)
+    pickleIn.close()
+    return object
+
+
+def saveToPickle(data, path):
+    pklFile = open(path, "wb")
+    pickle.dump(data, pklFile)
+    pklFile.close()
 
 
 def mctsPolicy():
@@ -27,7 +38,7 @@ def mctsPolicy():
     gridSize = 15
     upperBound = [gridSize - 1, gridSize - 1]
 
-    maxRunningSteps = 50
+    maxRunningSteps = 30
 
     actionSpace = [(-1, 0), (1, 0), (0, 1), (0, -1)]
     numActionSpace = len(actionSpace)
@@ -44,16 +55,26 @@ def mctsPolicy():
 
     positionIndex = [0, 1]
 
-    getHunterPos = GetAgentPosFromState(hunterId, positionIndex)
-    getTargetsPos = GetAgentPosFromState(targetIds, positionIndex)
-    getStaqPos = GetAgentPosFromState(stagId, positionIndex)
+    getHunterPos_ = GetAgentPosFromState(hunterId, positionIndex)
+    getHunterPos = lambda state: getHunterPos_(state[0])
+    getTargetsPos_ = GetAgentPosFromState(targetIds, positionIndex)
+    getTargetsPos = lambda state: getTargetsPos_(state[0])
 
-    stayWithinBoundary = env.StayWithinBoundary(upperBound, lowerBound)
+    getStaqPos_ = GetAgentPosFromState(stagId, positionIndex)
+    getStaqPos = lambda state: getStaqPos_(state[0])
+
+    stayWithinBoundary = env.StayWithinBoundaryMaze(upperBound, lowerBound)
+
     isTerminal = env.IsTerminal(getHunterPos, getTargetsPos)
-    transitionFunction = env.Transition(stayWithinBoundary)
-    fixReset = lambda : [[7,7],[1, 13],[1, 1],[13, 1], [13, 13]]
-    reset = env.Reset(upperBound, lowerBound, numOfAgent)
-    reset = fixReset
+
+    transitionFunction = env.TransitionWithObstacles(stayWithinBoundary)
+
+    highValueSteps = 19
+    numberOfMaze = 5
+    loadPath = os.path.join('..', 'pathPlanning', 'map', str(highValueSteps) + 'highValueSteps' + str(numberOfMaze) + 'maps' + '.pickle')
+    mazeList = loadFromPickle(loadPath)
+
+    reset = env.ResetMaze(upperBound, lowerBound, numOfAgent, mazeList)
 
     # stagPolicy = RandomPolicy(sheepActionSpace)
     stagPolicy = stationaryAgentPolicy
@@ -65,14 +86,16 @@ def mctsPolicy():
     selectChild = SelectChild(calculateScore)
     getActionPrior = lambda state: {action: 1 / len(actionSpace) for action in actionSpace}
 
+    # def wolfTransit(state, action): return transitionFunction(
+        # state, [action, maxFromDistribution(stagPolicy(state))] + [maxFromDistribution(rabbitPolicy(state)) for rabbitPolicy in rabbitPolicies])
     def wolfTransit(state, action): return transitionFunction(
-        state, [action, maxFromDistribution(stagPolicy(state))] + [maxFromDistribution(rabbitPolicy(state)) for rabbitPolicy in rabbitPolicies])
+        state, [action, maxFromDistribution(stagPolicy(state))])
 
     stepPenalty = -1 / maxRunningSteps
+    # stepPenalty = -0.1
     catchBonus = 1
-    highRewardRatio = 50
-    rewardFunction = reward.RewardFunction(highRewardRatio, stepPenalty, catchBonus, isTerminal, getHunterPos, getStaqPos)
-
+    highRewardRatio = 10
+    rewardFunction = reward.RewardFunction(highRewardRatio, stepPenalty, catchBonus, isTerminal,getHunterPos,getStaqPos)
     initializeChildren = InitializeChildren(actionSpace, wolfTransit, getActionPrior)
     expand = Expand(isTerminal, initializeChildren)
 
@@ -91,7 +114,6 @@ def mctsPolicy():
     # All agents' policies
     policy = lambda state: [wolfPolicy(state), stagPolicy(state)] + [rabbitPolicy(state) for rabbitPolicy in rabbitPolicies]
     numOfAgent = 5
-    gridSize = 15
     maxRunningSteps = 50
 
     screenWidth = 600
@@ -119,7 +141,7 @@ def mctsPolicy():
     chooseAction = [maxFromDistribution] * numOfAgent
 
     renderOn = True
-    sampleTrajectory = SampleTrajectory(maxRunningSteps, transitionFunction, isTerminal, reset, chooseAction, renderOn, drawNewState)
+    sampleTrajectory = SampleTrajectoryMaze(maxRunningSteps, transitionFunction, isTerminal, reset, chooseAction, renderOn, drawNewState)
 
     startTime = time.time()
     numOfEpisodes = 10

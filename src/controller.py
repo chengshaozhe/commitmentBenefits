@@ -234,6 +234,31 @@ class HumanController():
                         exit()
         return aimePlayerGrid, action
 
+class MazeModelController():
+    def __init__(self, policy, gridSize, softmaxBeta):
+        self.policy = policy
+        self.gridSize = gridSize
+        self.actionSpace = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+        self.softmaxBeta = softmaxBeta
+
+    def __call__(self, playerGrid, targetGrid1, targetGrid2):
+        try:
+            policyForCurrentStateDict = self.policy[(playerGrid, (targetGrid1, targetGrid2))]
+        except KeyError as e:
+            policyForCurrentStateDict = self.policy[(playerGrid, (targetGrid2, targetGrid1))]
+        if self.softmaxBeta < 0:
+            actionMaxList = [action for action in policyForCurrentStateDict.keys() if
+                             policyForCurrentStateDict[action] == np.max(list(policyForCurrentStateDict.values()))]
+            action = random.choice(actionMaxList)
+        else:
+
+            actionValue = list(policyForCurrentStateDict.values())
+            softmaxProbabilityList = calculateSoftmaxProbability(actionValue, self.softmaxBeta)
+            action = list(policyForCurrentStateDict.keys())[
+                list(np.random.multinomial(1, softmaxProbabilityList)).index(1)]
+        aimePlayerGrid = tuple(np.add(playerGrid, action))
+        # pg.time.delay(500)
+        return aimePlayerGrid, action
 
 class ModelController():
     def __init__(self, policy, gridSize, softmaxBeta):
@@ -330,6 +355,26 @@ class InferGoalPosterior:
 
         return posteriorList
 
+class MCTSControllerWithGoal:
+    def __init__(self, softmaxBeta, goalPolicy):
+        self.softmaxBeta = softmaxBeta
+        self.goalPolicy = goalPolicy
+
+    def __call__(self, playerGrid, targetGrid1, targetGrid2, priorList):
+        targets = list([targetGrid1, targetGrid2])
+        actionProbList = [list(self.goalPolicy(playerGrid, goal).values()) for goal in targets]
+        actionProbs = calBasePolicy(priorList, actionProbList)
+
+        actionKeys = self.goalPolicy(playerGrid, targetGrid1).keys()
+        actionDict = dict(actionKeys, actionProbs)
+
+        if self.softmaxBeta < 0:
+            action = chooseMaxAcion(actionDict)
+        else:
+            action = chooseSoftMaxAction(actionDict, self.softmaxBeta)
+
+        aimePlayerGrid = tuple(np.add(playerGrid, action))
+        return aimePlayerGrid, action
 
 class ModelControllerWithGoal:
     def __init__(self, softmaxBeta, goalPolicy):
@@ -368,7 +413,18 @@ class ModelControllerOnlineReward:
         aimePlayerGrid = tuple(np.add(playerGrid, action))
         return aimePlayerGrid, action
 
+class ModelControllerMCTS:
+    def __init__(self, softmaxBeta):
+        self.softmaxBeta = softmaxBeta
 
+    def __call__(self, state, policy):
+        actionDict = policy(state)
+        if self.softmaxBeta < 0:
+            actions = [chooseMaxAcion(action) for action in actionDict]
+        else:
+            actions = [chooseSoftMaxAction(action, self.softmaxBeta) for action in actionDict]
+
+        return actions
 class ModelControllerOnline:
     def __init__(self, softmaxBeta):
         self.softmaxBeta = softmaxBeta

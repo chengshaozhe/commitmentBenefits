@@ -1,6 +1,19 @@
 import pandas as pd
 import os
+import pickle
 
+
+def loadFromPickle(path):
+    pickleIn = open(path, 'rb')
+    object = pickle.load(pickleIn)
+    pickleIn.close()
+    return object
+
+
+def saveToPickle(data, path):
+    pklFile = open(path, "wb")
+    pickle.dump(data, pklFile)
+    pklFile.close()
 
 class WriteDataFrameToCSV():
     def __init__(self, saveResultFile):

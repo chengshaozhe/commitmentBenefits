@@ -113,8 +113,10 @@ def establishPlainActionDist(root):
 
 def establishSoftmaxActionDist(root):
     visits = np.array([child.numVisited for child in root.children])
-    expVisits = np.exp(visits)
-    actionProbs = expVisits / np.sum(expVisits)
+    # expVisits = np.exp(visits)
+    # actionProbs = expVisits / np.sum(expVisits)
+    actionProbs = np.exp(visits) / np.sum(np.exp(visits))
+
     actions = [list(child.id.keys())[0] for child in root.children]
     actionDist = dict(zip(actions, actionProbs))
     return actionDist
@@ -160,8 +162,11 @@ def establishPlainActionDistFromMultipleTrees(roots):
 
 def establishSoftmaxActionDistFromMultipleTrees(roots):
     visits = np.sum([[child.numVisited for child in root.children] for root in roots], axis=0)
-    expVisits = np.exp(visits)
-    actionProbs = expVisits / np.sum(expVisits)
+    # expVisits = np.exp(visits)
+    # actionProbs = expVisits / np.sum(expVisits)
+
+    actionProbs = np.exp(visits) / np.sum(np.exp(visits))
+
     actions = [list(child.id.keys())[0] for child in roots[0].children]
     actionDist = dict(zip(actions, actionProbs))
     return actionDist
@@ -179,6 +184,8 @@ class StochasticMCTS:
 
     def __call__(self, currentState):
         roots = []
+
+
         for treeIndex in range(self.numTree):
             root = Node(id={None: currentState}, numVisited=0, sumValue=0, isExpanded=False)
             root = self.expand(root)
