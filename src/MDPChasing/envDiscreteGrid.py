@@ -22,6 +22,42 @@ class FixReset:
         startState = [self.agentState] + [self.stagState] + [list(state) for state in  self.rabbitState]
         return startState
 
+class ResetMazeNoWallForTrain:
+    def __init__(self, gridSize, lowerBound,MazeList):
+        self.gridX, self.gridY = gridSize
+        self.lowerBound = lowerBound
+        self.MazeList = MazeList
+
+    def __call__(self):
+        # maze = np.random.sample(self.MazeList)
+        maze = sample(self.MazeList, 1)[0]
+        # agentState = list(maze['initAgent'])
+        agentState = list((randint(self.lowerBound, self.gridX), randint(self.lowerBound, self.gridY)))  
+        stagState = list(maze['highValueGoalPos'])
+        rabbitState = list(maze['lowValueGoalsPos'])
+        startState = [agentState]+[stagState]+[list(state) for state in rabbitState]
+        # obs = maze['fixedObstacles']
+        obs=[]
+        return [startState, obs]
+
+class ResetMazeNoWallFix:
+    def __init__(self, gridSize, lowerBound,MazeList):
+        self.gridX, self.gridY = gridSize
+        self.lowerBound = lowerBound
+        self.MazeList = MazeList
+
+    def __call__(self):
+        # maze = np.random.sample(self.MazeList)
+        maze = sample(self.MazeList, 1)[0]
+        agentState = list(maze['initAgent'])
+        # agentState = list((randint(self.lowerBound, self.gridX), randint(self.lowerBound, self.gridY)))  
+        stagState = list(maze['highValueGoalPos'])
+        rabbitState = list(maze['lowValueGoalsPos'])
+        startState = [agentState]+[stagState]+[list(state) for state in rabbitState]
+        # obs = maze['fixedObstacles']
+        obs=[]
+        return [startState, obs]
+        
 class ResetMaze:
     def __init__(self, gridSize, lowerBound,MazeList):
         self.gridX, self.gridY = gridSize
@@ -36,7 +72,7 @@ class ResetMaze:
         rabbitState = list(maze['lowValueGoalsPos'])
         startState = [agentState]+[stagState]+[list(state) for state in rabbitState]
         obs = maze['fixedObstacles']
-        obs=[]
+        # obs=[]
         return [startState, obs]
 
 class StayWithinBoundary:
@@ -90,13 +126,17 @@ class IsHitObstacles:
 
 
 class TransitionWithObstacles:
-    def __init__(self, StayWithinBoundaryMaze):
-        self.StayWithinBoundaryMaze = StayWithinBoundaryMaze
+    def __init__(self, stayWithinBoundaryMaze):
+        self.stayWithinBoundaryMaze = stayWithinBoundaryMaze
 
     def __call__(self, stateList,actionList):
+        # print(stateList,actionList)
         obstacleList = stateList[1]
         agentStateList = stateList[0]
-        agentsNextState = [self.StayWithinBoundaryMaze(state, action, obstacleList) for state,action in zip(agentStateList,actionList)]
+        # [print(state,  list(action), obstacleList) for state,action in zip(agentStateList,actionList)]
+        # for state, action in zip(agentStateList, actionList):
+
+        agentsNextState = [self.stayWithinBoundaryMaze(state, action, obstacleList) for state,action in zip(agentStateList,actionList)]
         return [agentsNextState,obstacleList]
 
 

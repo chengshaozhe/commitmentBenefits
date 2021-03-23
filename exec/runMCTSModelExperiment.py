@@ -24,6 +24,7 @@ def mctsPolicy(condition):
     renderOn = True
     numSimulations = condition['numSimulations']
     maxRolloutSteps = condition['maxRolloutSteps']
+    maxRunningSteps = condition['maxRunningSteps']
 
     resultsPath = os.path.abspath(os.path.join(os.path.join(os.getcwd(), os.pardir), 'results'))
 
@@ -65,14 +66,16 @@ def mctsPolicy(condition):
     hunterId = [0]
     stagId = [1]
     rabbitId = [2, 3, 4]
-    # targetIds = stagId + rabbitId
-    targetIds = stagId
+    targetIds = stagId + rabbitId
+    # targetIds = stagId
 
     positionIndex = [0, 1]
     getHunterPos_ = GetAgentPosFromState(hunterId, positionIndex)
     getHunterPos = lambda state: getHunterPos_(state[0])
-    getTargetsPos_ = GetAgentPosFromState(targetIds, positionIndex)
-    getTargetsPos = lambda state: getTargetsPos_(state[0])
+    getTargetsPos_s = GetAgentPosFromState(targetIds, positionIndex)
+    getTargetsPos = lambda state: getTargetsPos_s(state[0])
+    # getTargetsPos_s = [GetAgentPosFromState(targetId, positionIndex) for targetId in targetIds]
+    # getTargetsPos = lambda state: [getTargetsPos_(state[0]) for getTargetsPos_ in getTargetsPos_s ]
 
     getStaqPos_ = GetAgentPosFromState(stagId, positionIndex)
     getStaqPos = lambda state: getStaqPos_(state[0])
@@ -104,17 +107,15 @@ def mctsPolicy(condition):
     selectChild = SelectChild(calculateScore)
     getActionPrior = lambda state: {action: 1 / len(actionSpace) for action in actionSpace}
 
+    def wolfTransit(state, action): return transitionFunction(state, [action, maxFromDistribution(stagPolicy(state))] + [maxFromDistribution(rabbitPolicy(state)) for rabbitPolicy in rabbitPolicies])
     # def wolfTransit(state, action): return transitionFunction(
-        # state, [action, maxFromDistribution(stagPolicy(state))] + [maxFromDistribution(rabbitPolicy(state)) for rabbitPolicy in rabbitPolicies])
-    def wolfTransit(state, action): return transitionFunction(
-        state, [action, maxFromDistribution(stagPolicy(state))])
+    #     state, [action, maxFromDistribution(stagPolicy(state))])
 
-    maxRunningSteps = 10
     stepPenalty = -1 / maxRunningSteps
     # stepPenalty = -0
     # .1
     catchBonus = 1
-    highRewardRatio = 2
+    highRewardRatio = 0.5
     rewardFunction = reward.RewardFunction(highRewardRatio, stepPenalty, catchBonus, isTerminal,getHunterPos,getStaqPos)
 
     initializeChildren = InitializeChildren(actionSpace, wolfTransit, getActionPrior)
@@ -147,7 +148,8 @@ def mctsPolicy(condition):
         normalTrial = NormalTrialMCTSMaze(renderOn, controller, drawNewState, drawText,transitionFunction,isTerminal)
 
         experimentValues = co.OrderedDict()
-        experimentValues["name"] = "maxRolloutSteps" + str(maxRolloutSteps) + '_' + "numSimulations" + str(numSimulations) + '_' + "softmaxBeta" + str(softmaxBeta) + '_' + str(i)
+        experimentValues["name"] = "maxRolloutSteps" + str(maxRolloutSteps) + '_' + "numSimulations" + str(numSimulations) +\
+                                   '_' + "softmaxBeta" + str(softmaxBeta) + '_' + "stepPenalty" + str(maxRunningSteps) + '_' + str(i)
         resultsDirPath = os.path.join(resultsPath,  "softmaxBeta" + str(softmaxBeta))
         if not os.path.exists(resultsDirPath):
             os.mkdir(resultsDirPath)
@@ -184,8 +186,9 @@ class ModelSimulationMazeMCTS():
 
 def main():
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numSimulations'] = [200, 400, 600]#[0.0, 1.0]
-    manipulatedVariables['maxRolloutSteps'] =[20, 30]# [0.0, 0.2, 0.4]
+    manipulatedVariables['numSimulations'] =[100]# [200, 400, 600]#[0.0, 1.0]
+    manipulatedVariables['maxRolloutSteps'] = [30]#[20, 30]# [0.0, 0.2, 0.4]
+    manipulatedVariables['maxRunningSteps'] = [30]#[10, 20, 30]
     productedValues = it.product(*[[(key, value) for value in values] for key, values in manipulatedVariables.items()])
     conditions = [dict(list(specificValueParameter)) for specificValueParameter in productedValues]
     for condition in conditions:

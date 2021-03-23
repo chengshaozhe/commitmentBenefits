@@ -17,8 +17,8 @@ class RewardFunction():
                 reward += self.highRewardRatio * self.deathPenalty
                 # print(reward)
             else:
-                reward += self.deathPenalty *0
-                # print(reward)
+                reward += self.deathPenalty
+                # print('rabbit')
 
         return reward
 

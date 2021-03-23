@@ -74,6 +74,53 @@ def checkTerminationOfTrial(bean1Grid, bean2Grid, humanGrid):
         pause = True
     return pause
 
+class NormalTrialQLearningMaze():
+    def __init__(self, renderOn, controller, drawNewState, drawText, transit, isTerminal):
+        self.renderOn = renderOn
+        self.controller = controller
+        self.drawNewState = drawNewState
+        self.drawText = drawText
+        self.transit = transit
+        self.isTerminal = isTerminal
+    def __call__(self, initialState, policy,condition):
+        state=initialState
+        initialTime = time.get_ticks()
+        reactionTime = list()
+        initialPlayerGrid = state[0][0]
+        trajectory = [initialPlayerGrid]
+        results = co.OrderedDict()
+        aimPlayerGridList = []
+        stepCount = 0
+
+        pause = True
+        while pause:
+            if self.renderOn:
+                playerPosition = state[0][0]
+
+                targetPositions = state[0][1:]
+                obstacles = state[1]
+                self.drawNewState(playerPosition, targetPositions, obstacles)
+            aimAction = self.controller(state, policy)
+
+            state = self.transit(state, aimAction)
+            stepCount = stepCount + 1
+            realPlayerGrid = state[0][0]
+            reactionTime.append(time.get_ticks() - initialTime)
+            trajectory.append(list(realPlayerGrid))
+            pause =  not self.isTerminal(state)
+        
+
+        results["isMutiGoal"] = str(condition['isMutiGoal'])
+        results["trainingEpisodes"] = str(condition['trainingEpisodes'])
+        results["fixAgentPostion"] = str(condition['fixAgentPostion'])
+
+        results["trajectory"] = str(trajectory)
+        results["lastPos"] = str(trajectory[-1])
+        results["steps"] = str(len(trajectory))
+
+        print(len(trajectory))
+        return results
+
 class NormalTrialMCTSMaze():
     def __init__(self, renderOn, controller, drawNewState, drawText, transit, isTerminal):
         self.renderOn = renderOn

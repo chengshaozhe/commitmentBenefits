@@ -13,7 +13,7 @@ from src.MDPChasing.reward import RewardFunctionCompete, RewardFunction
 from src.MDPChasing.state import GetAgentPosFromState
 
 from src.MDPChasing.policies import stationaryAgentPolicy, RandomPolicy
-from src.algorithms.qLearning import GetAction, UpdateQTable, initQtable, argMax
+from src.algorithms.qLearning import GetAction, UpdateQTable, initQtable, argMax, QLearningAgent
 from src.chooseFromDistribution import maxFromDistribution
 from src.visualization import *
 from src.trajectory import SampleTrajectory
@@ -38,7 +38,7 @@ class SoftmaxPolicy:
         return softMaxActionDict
 
 
-def qLearningPolicy():
+def main():
     lowerBound = 0
     gridSize = 10
     upperBound = [gridSize - 1, gridSize - 1]
@@ -65,7 +65,10 @@ def qLearningPolicy():
     isTerminal = env.IsTerminal(getHunterPos, getTargetsPos)
     transitionFunction = env.Transition(stayWithinBoundary)
     reset = env.Reset(upperBound, lowerBound, numOfAgent)
+    state = reset()
+    fixReset = lambda :state
 
+    fixReset = lambda: [(1, 1), (8, 8), (8, 9), (9, 9), (9, 8)]
     stagPolicy = RandomPolicy(sheepActionSpace)
     stagPolicy = stationaryAgentPolicy
 
@@ -81,71 +84,55 @@ def qLearningPolicy():
     rewardFunction = RewardFunction(highRewardRatio, stepPenalty, catchBonus, isTerminal,getHunterPos,getStaqPos)
 
 # q-learing
-    qTable = initQtable(actionSpace)
+    initQ = initQtable(actionSpace)
     discountFactor = 0.9
     learningRate = 0.01
     updateQTable = UpdateQTable(discountFactor, learningRate)
     epsilon = 0.1
     getAction = GetAction(epsilon, actionSpace, argMax)
 
+    episodes = 2000
+    maxRunningStepsPerEpisodes = 100
+    qLearningAgent=QLearningAgent(initQ, episodes, maxRunningStepsPerEpisodes, fixReset, wolfTransit, isTerminal, rewardFunction, updateQTable, getAction)
     startTime = time.time()
-    for episode in range(1000):
-        state = reset()
-        for step in range(maxRunningSteps):
-            wolfactionIndex = getAction(qTable, str(state))
-            wolfaction = actionSpace[wolfactionIndex]
-            nextState = wolfTransit(state, wolfaction)
-            reward = rewardFunction(nextState, wolfaction)
-            done = isTerminal(nextState)
+    QDict = qLearningAgent()
+    finshedTime = time.time() - startTime
+    print('time:', finshedTime)
+    # startTime = time.time()
+    # initstate = reset()
+    # for episode in range(2):
+    #     state = initstate
+    #     # state = reset()
+    #     for step in range(maxRunningSteps):
+    #         wolfactionIndex = getAction(qTable, str(state))
+    #         wolfaction = actionSpace[wolfactionIndex]
+    #         nextState = wolfTransit(state, wolfaction)
+    #         reward = rewardFunction(nextState, wolfaction)
+    #         done = isTerminal(nextState)
+    #
+    #         qTable = updateQTable(qTable, str(state), wolfactionIndex, reward, str(nextState))
+    #         state = nextState
+    #         if done:
+    #
+    #             break
 
-            qTable = updateQTable(qTable, str(state), wolfactionIndex, reward, str(nextState))
-            state = nextState
-            if done:
-                break
-    QDict = qTable
+    # QDict = qTable
+    print(QDict)
     softmaxBeta = 5
     wolfPolicy = SoftmaxPolicy(softmaxBeta, QDict, actionSpace)
     # All agents' policies
     policy = lambda state: [wolfPolicy(state), stagPolicy(state)] + [rabbitPolicy(state) for rabbitPolicy in rabbitPolicies]
 
-    return policy
-
-
-if __name__ == "__main__":
-    policy = qLearningPolicy()
     screenWidth = 600
     screenHeight = 600
     fullScreen = False
-    gridSize = 10
     numOfAgent = 5
     initializeScreen = InitializeScreen(screenWidth, screenHeight, fullScreen)
     screen = initializeScreen()
     # pg.mouse.set_visible(False)
-    lowerBound = 0
-    gridSize = 10
-    upperBound = [gridSize - 1, gridSize - 1]
 
-    actionSpace = [(-1, 0), (1, 0), (0, 1), (0, -1)]
-    numActionSpace = len(actionSpace)
 
-    sheepSpeedRatio = 1
-    sheepActionSpace = list(map(tuple, np.array(actionSpace) * sheepSpeedRatio))
 
-    numOfAgent = 5  # 1 hunter, 1 stag with high value, 3 rabbits with low value
-    hunterId = [0]
-    targetIds = [1, 2, 3, 4]
-    stagId = [1]
-    rabbitId = [2, 3, 4]
-
-    positionIndex = [0, 1]
-
-    getHunterPos = GetAgentPosFromState(hunterId, positionIndex)
-    getTargetsPos = GetAgentPosFromState(targetIds, positionIndex)
-
-    stayWithinBoundary = env.StayWithinBoundary(upperBound, lowerBound)
-    isTerminal = env.IsTerminal(getHunterPos, getTargetsPos)
-    transitionFunction = env.Transition(stayWithinBoundary)
-    reset = env.Reset(upperBound, lowerBound, numOfAgent)
     maxRunningSteps = 100
     leaveEdgeSpace = 2
     lineWidth = 1
@@ -164,13 +151,13 @@ if __name__ == "__main__":
 
     renderOn = True
     # print()
-    sampleTrajectory = SampleTrajectory(maxRunningSteps, transitionFunction, isTerminal, reset, chooseAction, renderOn, drawNewState)
+    sampleTrajectory = SampleTrajectory(maxRunningSteps, transitionFunction, isTerminal, fixReset, chooseAction, renderOn, drawNewState)
 
-    startTime = time.time()
+
     numOfEpisodes = 3000
     trajectories = [sampleTrajectory(policy) for i in range(numOfEpisodes)]
-    finshedTime = time.time() - startTime
 
     print('lenght:', len(trajectories[0]))
-    print('time:', finshedTime)
 
+if __name__ == "__main__":
+    main()

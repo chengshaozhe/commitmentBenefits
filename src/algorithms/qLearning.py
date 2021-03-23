@@ -36,7 +36,10 @@ class GetAction:
             stateAction = qTable[state]
             actionIndex = self.sampleByValue(stateAction)
             action = self.actions[actionIndex]
-        return actionIndex
+
+
+
+        return actionIndex,action
 
 
 def argMax(stateAction):
@@ -50,3 +53,34 @@ def argMax(stateAction):
         elif value == maxValue:
             maxIndexList.append(index)
     return random.choice(maxIndexList)
+
+
+class QLearningAgent():
+        def __init__(self, initQ, episodes, maxRunningStepsPerEpisodes, reset, transit, isTerminal, rewardFunction, updateQTable, getAction):
+            self.initQTable = initQ
+            self.episodes = episodes
+            self.maxRunningStepsPerEpisodes = maxRunningStepsPerEpisodes
+            self.reset = reset
+            self.transit = transit
+            self.isTerminal = isTerminal
+            self.rewardFunction = rewardFunction
+            self.transit = transit
+            self.updateQTable = updateQTable
+            self.getAction = getAction
+
+        def __call__(self):
+            qTable = self.initQTable
+            for episode in range(self.episodes):
+                state = self.reset()
+                for step in range(self.maxRunningStepsPerEpisodes):
+                    actionIndex,action = self.getAction(qTable, str(state))
+                    nextState = self.transit(state, action)
+                    reward = self.rewardFunction(nextState, action)
+                    done = self.isTerminal(nextState)
+
+                    qTable = self.updateQTable(qTable, str(state), actionIndex, reward, str(nextState))
+                    state = nextState
+                    if done:
+                        break
+
+            return qTable
